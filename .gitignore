@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+.venv_*/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.graphify/
+.gitnexus/
+*.code-workspace
+.DS_Store
