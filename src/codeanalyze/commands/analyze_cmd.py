@@ -6,6 +6,7 @@ from rich.panel import Panel
 
 from codeanalyze.analyzers import gitnexus, graphify
 from codeanalyze.analyzers import codereviewgraph as crg
+from codeanalyze.analyzers import serena
 from codeanalyze.commands.common import _validate_path, console
 from codeanalyze.core.registry import build_registry
 from codeanalyze.core.workspace import detect_workspace
@@ -76,7 +77,27 @@ def analyze(path: str, docs: bool, output: str | None):
 
     # — Serena —
     console.print("\n[bold cyan]▶ Serena 符号级工具集...[/]")
-    console.print("  ⏭️  Serena MCP 工具，在对话中直接使用\n")
+    s_tool = reg.tools.get("serena")
+    s_result = {"available": False, "tools": [], "indexed": 0}
+    if s_tool and s_tool.available:
+        s_stats = serena.get_symbol_stats(str(root))
+        if s_stats.get("available"):
+            s_result = {"available": True, "indexed": True, "tools": serena.get_available_tools()}
+            console.print(f"  [green]✅ 可用 ({len(s_result['tools'])} 个 MCP 工具)[/]")
+        else:
+            s_result = {"available": False, "tools": []}
+            console.print("  ⏭️ 未安装 (pip install serena-agent)")
+    else:
+        serena_plugins = [
+            p for p in Path.home().joinpath(".claude/plugins").iterdir()
+            if p.is_dir() and "serena" in p.name
+        ] if Path.home().joinpath(".claude/plugins").exists() else []
+        if serena_plugins:
+            console.print(f"  [green]✅ Serena 插件已安装[/]")
+            s_result = {"available": True, "tools": serena.get_available_tools()}
+        else:
+            console.print("  ⏭️ 未安装 (pip install serena-agent)")
+    console.print("  💡 在对话中使用 find_symbol/find_referencing_symbols 等 MCP 工具\n")
 
     # — Doc analysis —
     doc_result = None
@@ -90,7 +111,7 @@ def analyze(path: str, docs: bool, output: str | None):
 
     # — 生成报告 —
     console.print("\n[bold cyan]▶ 生成综合分析报告...[/]")
-    report_content = generate_summary(str(root), gresult, gnresult, {}, doc_result, crg_result)
+    report_content = generate_summary(str(root), gresult, gnresult, s_result, doc_result, crg_result)
     report_path = write_report(str(root), report_content, output)
     console.print(f"  [green]✅ 报告已写入: {report_path}[/]")
 
@@ -206,7 +227,7 @@ def report(path: str, output: str | None, docs: bool):
             "total_nodes": crg_stats.total_nodes,
             "total_edges": crg_stats.total_edges,
         }
-    console.print("  ⏭️  Serena MCP 工具，在对话中直接使用\n")
+    console.print("  💡 在对话中使用 find_symbol/find_referencing_symbols 等 MCP 工具\n")
     doc_result = None
 
     if docs:

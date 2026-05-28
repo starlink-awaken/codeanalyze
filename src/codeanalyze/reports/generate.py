@@ -113,11 +113,21 @@ def generate_summary(
     # ── Serena 符号级分析 ──
     lines.append("## 🔍 Serena 符号级分析")
     serena_tools = serena_result.get("tools", [])
-    if serena_tools:
-        lines.append(f"  ✅ {len(serena_tools)} 个 MCP 工具可用")
-        lines.append(f"  💡 使用: {', '.join(serena_tools[:5])}")
+    if serena_result.get("available"):
+        indexed = serena_result.get("indexed", 0)
+        if indexed:
+            lines.append(f"  ✅ 已索引 **{indexed:,}** 个符号")
+        elif serena_result.get("index_exists"):
+            lines.append(f"  ✅ 索引就绪")
+        else:
+            lines.append("  ✅ 可用")
+        lines.append(f"  🔧 {len(serena_tools)} 个 MCP 工具: {', '.join(serena_tools[:6])}")
+        if len(serena_tools) > 6:
+            lines.append(f"    ... 还有 {len(serena_tools) - 6} 个")
+        lines.append("  💡 在对话中直接调用 MCP 工具进行符号级查询")
     else:
         lines.append("  ⏭️ 未安装")
+        lines.append("  💡 pip install serena-agent")
     lines.append("")
 
     # ── 文档分析 ──
