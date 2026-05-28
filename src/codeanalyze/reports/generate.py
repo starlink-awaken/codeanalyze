@@ -1,4 +1,4 @@
-"""报告生成与合并 — 跨工具分析结果汇总"""
+"""报告生成与合并 — 跨工具分析结果汇总，含 CRG、GitNexus、Graphify 数据。"""
 
 from pathlib import Path
 
@@ -9,8 +9,18 @@ def generate_summary(
     gitnexus_result: dict,
     serena_result: dict,
     doc_result: dict = None,
+    crg_result: dict = None,
 ) -> str:
-    """生成跨工具综合分析摘要。"""
+    """生成跨工具综合分析报告。
+
+    Args:
+        repo_path: 项目根路径
+        graphify_result: Graphify 分析结果（entities/relations/error）
+        gitnexus_result: GitNexus 结果（status/stdout/error）
+        serena_result: Serena 工具列表（tools）
+        doc_result: 文档分析结果（total_docs/total_words/files）
+        crg_result: CRG 结果（total_files/total_nodes/total_edges）
+    """
     root = Path(repo_path).resolve()
     lines = [
         f"# 代码分析报告 — {root.name}",
@@ -18,8 +28,23 @@ def generate_summary(
         "",
     ]
 
-    # Graphify
-    lines.append("## 📊 Graphify 语义图谱")
+    # ── 项目概览 ──
+    lines.append("## 📦 项目概览")
+    py_files = [p for p in root.rglob("*.py") if p.is_file()]
+    lines.append(f"- Python 文件: {len(py_files):,}")
+    total_lines = 0
+    for p in py_files[:5000]:
+        try:
+            total_lines += p.read_text("utf-8", errors="ignore").count("\n") + 1
+        except (OSError, PermissionError):
+            pass
+    lines.append(f"- 源码行数: ~{total_lines:,}")
+    all_files = sum(1 for _ in root.rglob("*") if _.is_file())
+    lines.append(f"- 目录总文件: {all_files:,}")
+    lines.append("")
+
+    # ── Graphify 语义图谱 ──
+    lines.append("## 🌐 Graphify 语义图谱")
     if graphify_result.get("error") and graphify_result["error"] != "graphify import failed":
         lines.append(f"  ❌ {graphify_result['error']}")
     elif graphify_result.get("error"):
@@ -27,76 +52,109 @@ def generate_summary(
     else:
         entities = graphify_result.get("entities", [])
         relations = graphify_result.get("relations", [])
-        lines.append(f"  ✅ {len(entities)} 实体 / {len(relations)} 关系")
-        # Top entities by type
+        if not entities and not relations:
+            entities = graphify_result.get("nodes", [])
+            relations = graphify_result.get("edges", [])
+        lines.append(f"  ✅ **{len(entities):,}** 实体 / **{len(relations):,}** 关系")
         type_counts = {}
         for e in entities:
-            t = e.get("type", "Unknown")
+            t = e.get("type") or e.get("kind") or "Unknown"
             type_counts[t] = type_counts.get(t, 0) + 1
         for t, c in sorted(type_counts.items(), key=lambda x: -x[1])[:8]:
-            lines.append(f"    - {t}: {c}")
-        graph_path = _find_graphify_report(root)
-        if graph_path:
-            lines.append(f"    📄 {graph_path.relative_to(root)}")
-
-    # GitNexus
+            lines.append(f"    - {t}: {c:,}")
+        # Check for graphify report/html
+        report_path = root / "graphify-out" / "GRAPH_REPORT.md"
+        html_path = root / "graphify-out" / "graph.html"
+        if report_path.exists():
+            lines.append(f"    📄 报告: graphify-out/GRAPH_REPORT.md")
+        if html_path.exists():
+            lines.append(f"    🌐 可视化: graphify-out/graph.html")
     lines.append("")
+
+    # ── CRG Tree-sitter 知识图谱 ──
+    lines.append("## 🧬 CRG (Code Review Graph)")
+    if crg_result and crg_result.get("available"):
+        lines.append(f"  ✅ **{crg_result['total_files']:,}** 文件 / **{crg_result['total_nodes']:,}** 节点 / **{crg_result['total_edges']:,}** 边")
+        lines.append("  🔍 零 LLM 成本，纯 Tree-sitter AST 解析")
+        lines.append("  💡 在对话中使用 `codegraph_search` / `codegraph_callers` 查询")
+    else:
+        err = crg_result.get("error") if crg_result else "未检测"
+        lines.append(f"  ⏭️ {err}")
+    lines.append("")
+
+    # ── GitNexus 依赖图 ──
     lines.append("## 🔗 GitNexus 依赖图")
     if gitnexus_result.get("status") == "unavailable":
         lines.append("  ⏭️ 未安装")
+        lines.append("  💡 npm install -g gitnexus")
     elif gitnexus_result.get("status") == "ok":
         lines.append("  ✅ 索引完成")
-        if gitnexus_result.get("stdout"):
-            last = gitnexus_result["stdout"].strip().split("\n")[-3:]
-            for line in last:
-                lines.append(f"    {line}")
+        stdout = gitnexus_result.get("stdout", "")
+        # Parse key metrics from gitnexus output
+        import re
+        node_match = re.search(r"([\d,]+)\s*nodes?", stdout)
+        edge_match = re.search(r"([\d,]+)\s*edges?", stdout)
+        cluster_match = re.search(r"([\d,]+)\s*clusters?", stdout)
+        flow_match = re.search(r"([\d,]+)\s*flows?", stdout)
+        if node_match:
+            lines.append(f"    - 节点: {node_match.group(1)}")
+        if edge_match:
+            lines.append(f"    - 边: {edge_match.group(1)}")
+        if cluster_match:
+            lines.append(f"    - 社区: {cluster_match.group(1)}")
+        if flow_match:
+            lines.append(f"    - 执行流: {flow_match.group(1)}")
+        lines.append("  💡 在对话中使用 `gitnexus_impact` / `gitnexus_query` 查询")
     else:
-        lines.append(f"  ❌ {gitnexus_result.get('error', 'unknown error')}")
-
-    # Serena
+        err = gitnexus_result.get("error", "unknown error")
+        lines.append(f"  ❌ {err}")
     lines.append("")
+
+    # ── Serena 符号级分析 ──
     lines.append("## 🔍 Serena 符号级分析")
     serena_tools = serena_result.get("tools", [])
     if serena_tools:
         lines.append(f"  ✅ {len(serena_tools)} 个 MCP 工具可用")
-        lines.append(f"  💡 在对话中直接使用: {', '.join(serena_tools[:5])}...")
+        lines.append(f"  💡 使用: {', '.join(serena_tools[:5])}")
     else:
         lines.append("  ⏭️ 未安装")
+    lines.append("")
 
-    # Doc analysis
+    # ── 文档分析 ──
     if doc_result and doc_result.get("total_docs", 0) > 0:
-        lines.append("")
         lines.append("## 📝 文档分析")
-        lines.append(f"  ✅ {doc_result['total_docs']} 文档 / {doc_result['total_words']} 字")
-        for f in doc_result.get("files", [])[:5]:
+        lines.append(f"  ✅ {doc_result['total_docs']} 文档 / {doc_result['total_words']:,} 字")
+        for f in doc_result.get("files", [])[:8]:
             name = Path(f.get("path", "")).name
             wc = f.get("word_count", 0)
             label = "✅" if wc > 0 else "❌"
-            lines.append(f"  {label} {name}: {wc}字")
-        if len(doc_result.get("files", [])) > 5:
-            lines.append(f"  ... 还有 {len(doc_result['files']) - 5} 个文件")
+            lines.append(f"  {label} {name}: {wc:,}字")
+        remaining = len(doc_result.get("files", [])) - 8
+        if remaining > 0:
+            lines.append(f"  ... 还有 {remaining} 个文件")
+        lines.append("")
 
-    # Recommendation
-    lines.append("")
+    # ── 建议 ──
     lines.append("## 💡 建议")
-    missing = []
-    if graphify_result.get("error") is not None:
-        pass  # available
+    suggestions = []
+    if graphify_result.get("error") == "graphify import failed":
+        suggestions.append("安装 Graphify: pip install graphifyy")
     if gitnexus_result.get("status") == "unavailable":
-        missing.append("GitNexus (npm install -g gitnexus)")
+        suggestions.append("安装 GitNexus: npm install -g gitnexus")
     if not serena_tools:
-        missing.append("Serena MCP")
-    if missing:
-        lines.append(f"  建议安装: {' / '.join(missing)}")
+        suggestions.append("安装 Serena MCP 获取符号级编辑能力")
+    if crg_result and not crg_result.get("available"):
+        suggestions.append("安装 code-review-graph: npm install -g code-review-graph")
+    if suggestions:
+        for s in suggestions:
+            lines.append(f"  - {s}")
     else:
         lines.append("  ✅ 所有推荐工具已就绪")
 
+    lines.append("")
+    lines.append("---")
+    lines.append("> 由 codeanalyze v0.3.0 生成")
     return "\n".join(lines)
-
-
-def _find_graphify_report(root: Path) -> Path | None:
-    p = root / "graphify-out" / "GRAPH_REPORT.md"
-    return p if p.exists() else None
 
 
 def write_report(repo_path: str, content: str, output: str | None = None) -> str:

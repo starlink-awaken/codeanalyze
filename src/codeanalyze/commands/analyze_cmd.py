@@ -5,6 +5,7 @@ import click
 from rich.panel import Panel
 
 from codeanalyze.analyzers import gitnexus, graphify
+from codeanalyze.analyzers import codereviewgraph as crg
 from codeanalyze.commands.common import _validate_path, console
 from codeanalyze.core.registry import build_registry
 from codeanalyze.core.workspace import detect_workspace
@@ -47,6 +48,21 @@ def analyze(path: str, docs: bool, output: str | None):
         for t, c in sorted(type_counts.items(), key=lambda x: -x[1])[:5]:
             console.print(f"    - {t}: {c}")
 
+    # — CRG —
+    console.print("\n[bold cyan]▶ CRG Tree-sitter 知识图谱...[/]")
+    crg_stats = crg.status(str(root))
+    crg_result = {"available": False}
+    if crg_stats.error:
+        console.print(f"  ⏭️ {crg_stats.error}")
+    else:
+        crg_result = {
+            "available": True,
+            "total_files": crg_stats.total_files,
+            "total_nodes": crg_stats.total_nodes,
+            "total_edges": crg_stats.total_edges,
+        }
+        console.print(f"  [green]✅ {crg_stats.total_files} 文件 / {crg_stats.total_nodes} 节点 / {crg_stats.total_edges} 边[/]")
+
     # — GitNexus —
     console.print("\n[bold cyan]▶ GitNexus 依赖图分析...[/]")
     gn_tool = reg.tools.get("gitnexus")
@@ -74,7 +90,7 @@ def analyze(path: str, docs: bool, output: str | None):
 
     # — 生成报告 —
     console.print("\n[bold cyan]▶ 生成综合分析报告...[/]")
-    report_content = generate_summary(str(root), gresult, gnresult, {}, doc_result)
+    report_content = generate_summary(str(root), gresult, gnresult, {}, doc_result, crg_result)
     report_path = write_report(str(root), report_content, output)
     console.print(f"  [green]✅ 报告已写入: {report_path}[/]")
 
@@ -181,12 +197,21 @@ def report(path: str, output: str | None, docs: bool):
     gn_tool = reg.tools.get("gitnexus")
     g_result = graphify.analyze(str(root), g_tool) if g_tool else {}
     gn_result = gitnexus.analyze(str(root), gn_tool) if gn_tool else {}
+    crg_stats = crg.status(str(root))
+    crg_result = {"available": False, "error": crg_stats.error or "not available"}
+    if not crg_stats.error:
+        crg_result = {
+            "available": True,
+            "total_files": crg_stats.total_files,
+            "total_nodes": crg_stats.total_nodes,
+            "total_edges": crg_stats.total_edges,
+        }
     console.print("  ⏭️  Serena MCP 工具，在对话中直接使用\n")
     doc_result = None
 
     if docs:
         doc_result = doc_pipeline.analyze_path(path, reg)
 
-    content = generate_summary(str(root), g_result, gn_result, {}, doc_result)
+    content = generate_summary(str(root), g_result, gn_result, {}, doc_result, crg_result)
     target = write_report(str(root), content, output)
     console.print(f"[green]✅ 报告已写入: {target}[/]")
