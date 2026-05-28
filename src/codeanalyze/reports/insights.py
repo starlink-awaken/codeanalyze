@@ -49,7 +49,7 @@ def analyze(project_path: str, gitnexus_result: dict) -> list[dict]:
 
     insights.extend(_file_size_insights(py_files, root))
     insights.extend(_docstring_coverage(py_files, root))
-    insights.extend(_layer_check(py_files, root))
+    insights.extend(_layer_check(py_files, root, project_path))
     insights.extend(_import_safety(py_files, root))
     insights.extend(_dep_health(gitnexus_result))
 
@@ -122,12 +122,19 @@ def _docstring_coverage(py_files: list[Path], root: Path) -> list[dict]:
     }]
 
 
-def _layer_check(py_files: list[Path], root: Path) -> list[dict]:
-    """检查架构层级依赖是否违规。
+def _layer_check(py_files: list[Path], root: Path, project_path: str = "") -> list[dict]:
+    """检查架构层级依赖是否违规（仅 SharedBrain 项目生效）。
 
     层级顺序（从底到顶）：Spore → Core → Microkernel → organs
     违规 = 高层引用了低层（即反向依赖）。
     """
+    # 非 SharedBrain 项目跳过层级检查
+    if "sharedbrain" not in Path(project_path).name.lower():
+        return [{
+            "severity": "insight", "category": "架构",
+            "title": "层级依赖检查已跳过",
+            "detail": "当前项目非 SharedBrain，_LAYER_RULES 仅适用于 SharedBrain 架构",
+        }]
     violations = []
     for f in py_files:
         try:
