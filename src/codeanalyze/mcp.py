@@ -333,7 +333,6 @@ def crg_status(path: str = ".") -> dict:
         stats = crg.status(path)
         if stats.error:
             # Not installed - return empty
-            data = crg.CrgStats()
             return _ok({
                 "format_version": FORMAT_VERSION,
                 "available": False,

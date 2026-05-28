@@ -214,8 +214,6 @@ def try_eidos_validate(data: dict) -> dict:
 
 def _eidos_install_hint() -> str:
     """动态检测 Eidos 安装路径，避免硬编码。"""
-    # 检查常见 Workspace 路径
-    import os
     from pathlib import Path
 
     candidates = [
