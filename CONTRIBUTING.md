@@ -13,13 +13,28 @@ pip install -e ".[dev]"
 - Python 3.10+ type hints on all public functions
 - Google-style docstrings on modules and public APIs
 - Imports: stdlib → third-party → local
-- `ruff` for linting (when available)
+- `ruff` for linting: `ruff check src/ && ruff format src/`
 
 ## Tests
 
 ```bash
-pytest tests/ -x -q
+.venv/bin/python -m pytest tests/ -x -q
 ```
+
+105 tests total. New commands need tests.
+
+## Project structure
+
+- `src/codeanalyze/` — code analysis CLI (12 commands)
+- `src/policydoc/` — document analysis CLI (9 commands)
+- `src/codeanalyze/commands/` — codeanalyze CLI subcommands
+- `src/codeanalyze/core/` — shared models (Entity, Relation, KnowledgeGraph)
+- `src/codeanalyze/analyzers/` — one file per external tool adapter
+- `src/codeanalyze/documents/` — document processing capabilities
+- `src/codeanalyze/integrations/` — optional integrations (forge, eidos)
+- `src/codeanalyze/reports/` — output generation and cross-validation
+- `src/policydoc/commands/` — policydoc CLI subcommands
+- `tests/` — 105 pytest tests
 
 ## Pull requests
 
@@ -27,12 +42,3 @@ pytest tests/ -x -q
 2. Tests included
 3. Format with `ruff format src/` before committing
 4. Update `CLAUDE.md` if adding new commands
-
-## Project structure
-
-- `cli.py`: CLI commands only. No analysis logic.
-- `core/`: Shared models (Entity, Relation, KnowledgeGraph).
-- `analyzers/`: One file per external tool adapter.
-- `documents/`: One file per document processing capability.
-- `integrations/`: Optional integrations with external systems.
-- `reports/`: Output generation and cross-validation.

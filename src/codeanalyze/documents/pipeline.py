@@ -1,11 +1,10 @@
 """文档分析管线 — 串联 Docling / Marker / Unstructured，产出统一分析结果"""
 
 from pathlib import Path
-from typing import Optional
 
 from codeanalyze.core.registry import Registry
-from codeanalyze.documents.base import DocumentAnalysis
 from codeanalyze.documents import docling
+from codeanalyze.documents.base import DocumentAnalysis
 
 
 def analyze_path(path: str, registry: Registry) -> dict:

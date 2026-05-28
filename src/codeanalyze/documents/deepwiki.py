@@ -6,13 +6,10 @@ DeepWiki-Open 是自托管的 AI 文档生成器（Python/FastAPI + Next.js）�
 2. 本地模式: 基于 Graphify/GitNexus 输出直接生成 Wiki Markdown
 """
 
-import json
 import os
 from pathlib import Path
-from typing import Optional
 
 from codeanalyze.core.registry import ToolInfo
-
 
 DEEPWIKI_OPEN_URL = os.environ.get("DEEPWIKI_OPEN_URL", "")
 
@@ -46,8 +43,8 @@ def check_deepwiki_open(tool: ToolInfo = None) -> dict:
 
 def generate_wiki_from_analysis(
     repo_path: str,
-    graphify_result: Optional[dict] = None,
-    gitnexus_result: Optional[dict] = None,
+    graphify_result: dict | None = None,
+    gitnexus_result: dict | None = None,
 ) -> str:
     """基于 Graphify/GitNexus 的分析结果生成 Wiki 风格文档。
 

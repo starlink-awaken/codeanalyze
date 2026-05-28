@@ -4,7 +4,10 @@ import json
 from pathlib import Path
 
 from codeanalyze.core.results import (
-    Entity, Relation, KnowledgeGraph, Provenance,
+    Entity,
+    KnowledgeGraph,
+    Provenance,
+    Relation,
 )
 from codeanalyze.documents.official import PolicyGraph
 
@@ -132,11 +135,10 @@ def policy_graph_to_kg(pg: PolicyGraph, source: str = "official") -> KnowledgeGr
 def merge_code_kg(kg: KnowledgeGraph, repo_path: str) -> KnowledgeGraph:
     """尝试从代码分析器（Graphify/GitNexus）提取实体并合并。"""
     from codeanalyze.analyzers import graphify as gfa
-    from codeanalyze.core.registry import build_registry
 
-    reg = build_registry()
-    g_result = gfa.analyze(repo_path, reg.tools.get("graphify"))
+    g_result = gfa.analyze(repo_path)
     if g_result.get("error"):
+        kg.metadata["code_engine_error"] = g_result["error"]
         return kg
 
     for ent in g_result.get("entities", []):
@@ -206,7 +208,7 @@ def export_graph(
 def _md_summary(kg: KnowledgeGraph) -> str:
     lines = [
         "# 知识图谱导出报告",
-        f"## 概览",
+        "## 概览",
         f"- 实体: {kg.entity_count} 个",
         f"- 关系: {kg.relation_count} 条",
         f"- 来源文件: {len(kg.source_files)} 个",
@@ -221,8 +223,10 @@ def _md_summary(kg: KnowledgeGraph) -> str:
         tgt = kg.entities.get(r.target_id)
         sn = src.name if src else r.source_id
         tn = tgt.name if tgt else r.target_id
-        label = RELATION_TYPES.get(r.type, {}).get("label", r.type) if 'RELATION_TYPES' in dir() else r.type
-        lines.append(f"- {sn} --[{r.type}]--> {tn}")
+        label = r.type
+        if "RELATION_TYPES" in globals():
+            label = globals()["RELATION_TYPES"].get(r.type, {}).get("label", r.type)
+        lines.append(f"- {sn} --[{label}]--> {tn}")
     if len(kg.relations) > 50:
         lines.append(f"  ... 还有 {len(kg.relations) - 50} 条关系")
     lines.extend(["", "## 来源文件"])

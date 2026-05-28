@@ -4,16 +4,17 @@ build-backend = "hatchling.build"
 
 [project]
 name = "codeanalyze"
-version = "0.1.0"
+version = "0.3.0"
 description = "Unified code & document analysis toolkit — Graphify + GitNexus + Serena + Docling + MinerU"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [{name = "Workspace Team"}]
-keywords = ["code-analysis", "knowledge-graph", "document-analysis", "mcp"]
+keywords = ["code-analysis", "knowledge-graph", "document-analysis", "mcp", "knowledge-engineering"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -21,8 +22,10 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Documentation",
+    "Topic :: Text Processing :: Indexing",
     "Topic :: Text Processing :: Markup",
 ]
+urls = {Homepage = "https://github.com/workspace/codeanalyze", BugTracker = "https://github.com/workspace/codeanalyze/issues"}
 dependencies = [
     "click>=8.0",
     "rich>=13.0",
@@ -32,20 +35,54 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-cov",
+    "pre-commit>=3.0",
+    "ruff>=0.6.0",
 ]
 all = [
-    "graphifyy",
-    "docling",
-    "docling-graph",
-    "marker-pdf",
+    "graphifyy>=0.7",
+    "docling>=2.0",
+    "docling-graph>=0.1",
+    "marker-pdf>=1.0",
+    "mineru>=0.1",
 ]
+eidos = ["eidos>=0.1"]
+mcp = ["fastmcp>=0.6"]
 
 [project.scripts]
 codeanalyze = "codeanalyze.cli:cli"
+policydoc = "policydoc.cli:cli"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/codeanalyze"]
+packages = ["src/codeanalyze", "src/policydoc"]
+exclude = ["src/codeanalyze/**/__pycache__"]
+
+[tool.hatch.version]
+path = "src/codeanalyze/__init__.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+minversion = "7.0"
+addopts = "-v --tb=short -q"
+
+[tool.coverage.run]
+source = ["codeanalyze"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 70
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "S", "PLE", "RUF100"]
+ignore = ["S101", "S603", "S607", "S108", "S110", "S314"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B101", "B311", "B404", "B603"]

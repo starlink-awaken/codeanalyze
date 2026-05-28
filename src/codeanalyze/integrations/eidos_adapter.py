@@ -7,12 +7,9 @@ Eidos 是 Workspace 的 schema 定义与校验层。
   codeanalyze (分析抽取) → Eidos (schema校验) → KOS (存储索引) → OntoDerive (推理)
 """
 
-from pathlib import Path
-from typing import Optional
 from datetime import datetime
 
-from codeanalyze.core.results import KnowledgeGraph, Entity, Relation, RELATION_TYPES
-
+from codeanalyze.core.results import RELATION_TYPES, Entity, KnowledgeGraph
 
 # ── 元关系映射 (codeanalyze → Eidos MetaRelationType) ──
 _RELATION_TO_META = {
@@ -186,29 +183,24 @@ def try_eidos_validate(data: dict) -> dict:
     """尝试用 Eidos 校验输出。如果 Eidos 未安装则优雅降级。"""
     try:
         from eidos.registry import create_registry
-        from eidos.validator import Validator
 
         registry = create_registry()
-        validator = Validator(registry)
+        results: dict = {"schema_checks": {}}
 
-        results = {"schema_checks": {}}
-
-        # 校验 nodes
+        # 校验 ontology_nodes
         for node in data.get("ontology_nodes", [])[:3]:
-            result = validator.validate_node(node, strict=False)
+            result = registry.validate("OntologyNode", node, strict=False)
             results["schema_checks"][node["id"]] = {
                 "type": "OntologyNode",
-                "valid": result.is_valid,
-                "errors": [e.to_dict() for e in result.errors],
+                "valid": result.is_valid if hasattr(result, "is_valid") else result,
             }
 
         # 校验 cards
         for card in data.get("cards", [])[:3]:
-            result = validator.validate_card(card, strict=False)
+            result = registry.validate("KnowledgeCard", card, strict=False)
             results["schema_checks"][card["id"]] = {
                 "type": "KnowledgeCard",
-                "valid": result.is_valid,
-                "errors": [e.to_dict() for e in result.errors],
+                "valid": result.is_valid if hasattr(result, "is_valid") else result,
             }
 
         results["available"] = True

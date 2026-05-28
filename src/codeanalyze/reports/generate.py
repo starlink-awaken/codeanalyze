@@ -1,7 +1,6 @@
 """报告生成与合并 — 跨工具分析结果汇总"""
 
 from pathlib import Path
-from typing import Optional
 
 
 def generate_summary(
@@ -49,8 +48,8 @@ def generate_summary(
         lines.append("  ✅ 索引完成")
         if gitnexus_result.get("stdout"):
             last = gitnexus_result["stdout"].strip().split("\n")[-3:]
-            for l in last:
-                lines.append(f"    {l}")
+            for line in last:
+                lines.append(f"    {line}")
     else:
         lines.append(f"  ❌ {gitnexus_result.get('error', 'unknown error')}")
 
@@ -81,7 +80,7 @@ def generate_summary(
     lines.append("")
     lines.append("## 💡 建议")
     missing = []
-    if not graphify_result.get("error") is None:
+    if graphify_result.get("error") is not None:
         pass  # available
     if gitnexus_result.get("status") == "unavailable":
         missing.append("GitNexus (npm install -g gitnexus)")
@@ -95,12 +94,12 @@ def generate_summary(
     return "\n".join(lines)
 
 
-def _find_graphify_report(root: Path) -> Optional[Path]:
+def _find_graphify_report(root: Path) -> Path | None:
     p = root / "graphify-out" / "GRAPH_REPORT.md"
     return p if p.exists() else None
 
 
-def write_report(repo_path: str, content: str, output: Optional[str] = None) -> str:
+def write_report(repo_path: str, content: str, output: str | None = None) -> str:
     """将报告写入文件。"""
     target = output or str(Path(repo_path).resolve() / "codeanalyze-report.md")
     Path(target).write_text(content, encoding="utf-8")

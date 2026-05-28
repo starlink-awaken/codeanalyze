@@ -1,8 +1,7 @@
 """工作区检测 — 识别项目语言、规模、已有 graphify-out 等"""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -82,7 +81,7 @@ def detect_workspace(path_str: str = ".") -> WorkspaceInfo:
     return info
 
 
-def _suffix_to_lang(suffix: str) -> Optional[str]:
+def _suffix_to_lang(suffix: str) -> str | None:
     return {
         ".py": "Python", ".ts": "TypeScript", ".tsx": "TypeScript",
         ".js": "JavaScript", ".jsx": "JavaScript",

@@ -427,7 +427,29 @@ console.print("  建议: codeanalyze documents /Users/xiamingxing/Documents/国�
      └────────────────┘
 ```
 
-## 修复优先级
+## 修复状态 (2026-05-21)
+
+| ID | 风险 | 修复 |
+|----|------|------|
+| C-01 | 路径注入 | ✅ `cli.py`: home 目录白名单校验 |
+| C-02 | pdftotext 超时 | ✅ `PDF_TIMEOUT=60` + `returncode` 检查 + warning 日志 |
+| C-03 | 幻象关系 | ✅ `INFERRED` 降权 + `note` 字段标注 + 仅非 wiki 文件启用 |
+| H-01 | 异常吞噬 | ✅ 全部 `except` 块加 `logger.warning()` |
+| H-02 | JSON-LD URI 编码 | ✅ `urllib.parse.quote(safe=":/-")` |
+| H-03 | ZIP bomb | ✅ `MAX_EMBEDDED_FILE_SIZE=10MB` 逐文件检查 |
+| H-04 | 控制字符污染 | ✅ `_strip_control_chars()` 过滤不可见字符 |
+| H-05 | Cypher 注入 | ✅ 单引号转义 + 实体类型标签消毒 |
+| H-06 | 正则回溯 | ✅ `[一-鿿]+` → `[一-鿿]{2,6}` 限制长度 |
+| M-01 | 汉字编码退化 | ✅ 同步更新 |
+| M-02 | XLSX 空数据 | ✅ `sharedStrings.xml` + `ElementTree` 解析实现真实值 |
+| M-03 | Graphify 版本 | ✅ 保留 `except Exception` + 日志 |
+| M-04 | 并发竞争 | ⏳ 低优先级，暂缓 |
+| M-05 | 扩展名遗漏 | ⏳ 低优先级，暂缓 |
+| L-01 | 模糊时间戳 | ✅ `datetime.now()` 替换 `...` |
+| L-02 | 重复 import | ✅ 移除行内 `from pathlib import Path` |
+| L-03 | 选项描述 | ⏳ 低优先级，暂缓 |
+| L-04 | 路径泄露 | ⏳ 低优先级，暂缓 |
+
 
 | ID | 风险 | 复杂度 | 优先级 |
 |----|------|--------|--------|

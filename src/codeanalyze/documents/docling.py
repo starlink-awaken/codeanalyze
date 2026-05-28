@@ -1,10 +1,7 @@
 """Docling / Docling-Graph 分析适配器"""
 
-from pathlib import Path
-from typing import Optional
 
 from codeanalyze.core.registry import ToolInfo
-from codeanalyze.documents.base import DocumentAnalysis
 
 
 def check_docling(tool: ToolInfo = None) -> dict:
@@ -23,27 +20,27 @@ def check_docling_graph(tool: ToolInfo = None) -> dict:
     if tool and not tool.available:
         return {"available": False, "error": "docling-graph not installed"}
     try:
-        import docling_graph
+        import docling_graph  # noqa: F401
         return {"available": True, "version": "installed"}
     except ImportError:
         return {"available": False, "error": "docling-graph not installed"}
 
 
-def convert_to_markdown(file_path: str) -> Optional[str]:
+def convert_to_markdown(file_path: str) -> str | None:
     """使用 Docling 将文档转为 Markdown。"""
     try:
         from docling.document_converter import DocumentConverter
         converter = DocumentConverter()
         result = converter.convert(file_path)
         return result.document.export_to_markdown()
-    except Exception as e:
+    except Exception:
         return None
 
 
-def extract_knowledge_graph(file_path: str, template_path: Optional[str] = None) -> dict:
+def extract_knowledge_graph(file_path: str, template_path: str | None = None) -> dict:
     """使用 Docling-Graph 从文档提取知识图谱。"""
     try:
-        from docling_graph import run_pipeline, PipelineContext
+        from docling_graph import PipelineContext, run_pipeline  # noqa: F401
         config = {
             "source": file_path,
             "backend": "llm",

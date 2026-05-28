@@ -1,16 +1,16 @@
 """Tests for documents/official.py — policy document analysis."""
 
-import sys, tempfile
+import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from codeanalyze.documents.official import (
-    analyze_policy_directory,
     _extract_doc_number,
-    _guess_level_from_path_or_name,
     _extract_domain_from_path,
-    _clean_title,
+    _guess_level_from_path_or_name,
+    analyze_policy_directory,
 )
 
 

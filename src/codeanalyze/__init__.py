@@ -4,4 +4,4 @@
 和 Docling/Marker (文档解析) 统一到一个命令入口。
 """
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"

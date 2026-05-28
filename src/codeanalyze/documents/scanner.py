@@ -1,10 +1,8 @@
 """国转中心 / 文档项目扫描分析 — 目录结构、文件类型、实体抽取、交叉引用"""
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
-import re
-
 
 _CATEGORY_PREFIX = {
     "00": "中心介绍/总览",
@@ -25,6 +23,7 @@ _CODE_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java",
                      ".c", ".cpp", ".h", ".hpp", ".rb", ".cs", ".kt",
                      ".swift", ".sh", ".bash", ".vue", ".svelte"}
 _SUPERSEDES_PATTERN = re.compile(r"(?:supersedes|版本|v)(\d+)", re.IGNORECASE)
+_VERSION_PATTERN = re.compile(r"v?(\d+(?:\.\d+)*)", re.IGNORECASE)
 
 
 @dataclass
@@ -33,7 +32,7 @@ class DocFile:
     category: str = "未分类"
     file_type: str = "unknown"
     is_versioned: bool = False
-    version: Optional[str] = None
+    version: str | None = None
     is_archive: bool = False
     byte_size: int = 0
     is_wiki: bool = False
@@ -73,7 +72,7 @@ class DirectoryMap:
         if self.version_chains:
             lines.append(f"   版本链: {len(self.version_chains)} 组")
         if self.categories:
-            lines.append(f"\n   分类目录:")
+            lines.append("\n   分类目录:")
             for cat, files in sorted(self.categories.items()):
                 lines.append(f"     {cat}: {len(files)} 文件")
         return "\n".join(lines)

@@ -13,3 +13,18 @@ build/
 .gitnexus/
 *.code-workspace
 .DS_Store
+
+# Generated outputs
+codeanalyze-export.json
+policydoc-export.json
+codeanalyze-report.md
+policydoc-report.md
+graphify-out/
+*.audit-report.md
+*.docscan-report.md
+*.wiki.md
+
+# Dev artifacts
+.omc/
+.claude/plugins/
+docs/

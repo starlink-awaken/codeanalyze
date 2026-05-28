@@ -1,148 +1,202 @@
 ---
 name: codeanalyze
-description: 统一代码与文档分析工具箱。整合 Graphify(语义图)+GitNexus(依赖图)+Serena(符号)+Docling(文档)。当用户说「分析项目」「分析代码」「生成项目报告」「分析依赖」「分析文档」「codeanalyze」「运行分析管线」「项目结构化分析」时触发。提供 status/analyze/graph/deps/docs/report 六个子命令。
+description: 统一代码与文档分析工具箱。整合 CRG(AST→SQLite)+Graphify(语义图)+GitNexus(依赖图)+Docling(文档)+MinerU(中文PDF)+policydoc(公文分析)。提供 codeanalyze(12命令)+policydoc(9命令) 两个 CLI 及 MCP HTTP 服务。当用户说「分析项目」「分析代码」「生成项目报告」「分析依赖」「分析文档」「codeanalyze」「运行分析管线」「项目结构化分析」「公文分析」「政策文档」时触发。
 ---
 
 # codeanalyze — 统一代码与文档分析工具箱
 
-整合了代码分析和文档分析两个领域的工具链，一个命令触发全链路分析。
+整合了代码分析和文档分析两个领域的工具链，两个 CLI 入口、一个共享引擎。
+
+依赖探测机制：装多少用多少，未安装自动跳过。
 
 ## 安装
 
 ```bash
 pip install -e /Users/xiamingxing/Workspace/codeanalyze
+```
 
-# 可选依赖（按需安装）：
-pip install graphifyy           # 语义图谱（推荐）
-npm install -g gitnexus          # 依赖关系图（推荐）
+两个 CLI 自动注册：`codeanalyze` + `policydoc`。
+
+可选依赖：
+```
+pip install graphifyy           # 语义图谱
+npm install -g gitnexus         # 依赖关系图
+npm install -g code-review-graph  # Tree-sitter AST→SQLite（零LLM成本）
 pip install docling docling-graph  # 文档→知识图谱
-pip install marker-pdf           # PDF→Markdown
+pip install marker-pdf          # PDF→Markdown
+pip install mineru              # 中文PDF解析
 ```
 
 ## 子命令速查
 
+### codeanalyze（12 个命令 — 代码分析为主）
+
 | 命令 | 作用 | 典型用法 |
 |------|------|---------|
-| `codeanalyze status` | 查看当前安装的分析工具 | `codeanalyze status` |
-| `codeanalyze analyze [path]` | 运行全部分析（核心命令） | `codeanalyze analyze --docs .` |
-| `codeanalyze graph [path]` | 仅 Graphify 语义图谱 | `codeanalyze graph .` |
-| `codeanalyze deps [path]` | 仅 GitNexus 依赖图 | `codeanalyze deps --force .` |
-| `codeanalyze docs [path]` | 仅文档分析 | `codeanalyze docs ./docs` |
-| `codeanalyze report [path]` | 仅生成报告（不重跑分析） | `codeanalyze report --docs .` |
-| `codeanalyze docscan [path]` | 扫描文档项目（目录/版本/Wiki） | `codeanalyze docscan --wiki --versions .` |
-| `codeanalyze wiki [path]` | 生成 Wiki 文档（DeepWiki-Open/本地） | `codeanalyze wiki --api .` |
-| `codeanalyze documents [path]` | **公文/政策分析**（文号/层级/关系） | `codeanalyze documents --levels .` |
-| `codeanalyze export [path]` | **导出结构化知识图谱** | `codeanalyze export -f json-ld .` |
+| `status` | 查看当前安装的分析工具 | `codeanalyze status` |
+| `analyze` | 运行全部分析 | `codeanalyze analyze --docs .` |
+| `graph` | 仅 Graphify 语义图谱 | `codeanalyze graph .` |
+| `deps` | 仅 GitNexus 依赖图 | `codeanalyze deps --force .` |
+| `docs` | 仅文档分析 | `codeanalyze docs ./docs` |
+| `report` | 仅生成报告（不重跑分析） | `codeanalyze report --docs .` |
+| `export` | 导出知识图谱（JSON/JSON-LD/Cypher/MD/Eidos） | `codeanalyze export -f json .` |
+| `crg` | Tree-sitter CRG 知识图谱（build/status/viz） | `codeanalyze crg build .` |
+| `dashboard` | 启动交互式知识图谱仪表盘 | `codeanalyze dashboard .` |
+| `install` | 一键安装可选分析工具 | `codeanalyze install --all` |
+| `search` | ripgrep 搜索代码 | `codeanalyze search "pattern" .` |
+| `serve` | 启动 MCP HTTP 服务 | `codeanalyze serve --port 8765` |
 
-## 三层分析架构
+### policydoc（9 个命令 — 公文/政策分析为主）
+
+| 命令 | 作用 | 典型用法 |
+|------|------|---------|
+| `status` | 显示文档工具安装状态 | `policydoc status` |
+| `analyze` | 全量公文分析（文档+Wiki+目录） | `policydoc analyze .` |
+| `documents` | 公文/政策元数据提取（文号/层级/关系） | `policydoc documents --levels .` |
+| `export` | 导出政策知识图谱 | `policydoc export -f json .` |
+| `audit` | 知识审计（文档 vs Wiki 交叉验证） | `policydoc audit .` |
+| `docscan` | 扫描文档项目结构（目录/版本/Wiki） | `policydoc docscan --wiki --versions .` |
+| `dashboard` | 政策知识图谱仪表盘 | `policydoc dashboard .` |
+| `wiki` | 生成政策文档 Wiki | `policydoc wiki .` |
+| `install` | 文档工具安装指南 | `policydoc install --all` |
+
+## 架构
 
 ```
-Serena (符号层)   → LSP 符号级检索：找定义、找引用、重构
-GitNexus (关系层) → 预计算依赖图：调用链、blast radius
-Graphify (语义层) → AST+LLM 语义图谱：God Node、社区检测、置信度标签
-                              ↓
-                    Docling (文档层) → 文档→Markdown→知识图谱
-                              ↓
-                      Merged Report (跨工具汇总)
+              ┌────────────────────────┐
+              │      两个 CLI           │
+              │  codeanalyze / policydoc│
+              └───────────┬────────────┘
+                          │
+              ┌───────────▼────────────┐
+              │   MCP HTTP 服务        │
+              │  (codeanalyze serve)   │
+              │  15 个 FastMCP 工具    │
+              └───────────┬────────────┘
+                          │
+              ┌───────────▼────────────────────────┐
+              │  core/ 注册中心 + ER 模型 + 工作区  │
+              └───────┬──────────────────┬─────────┘
+                      │                  │
+         ┌────────────▼──────┐  ┌───────▼──────────┐
+         │   代码分析引擎     │  │   文档分析引擎    │
+         │  CRG / GitNexus   │  │  MinerU / Docling │
+         │  Graphify / ripgrep│  │  official(公文)  │
+         └────────┬──────────┘  └───────┬──────────┘
+                  │                      │
+                  └──────────┬───────────┘
+                             ▼
+                   ┌──────────────────┐
+                   │  Entity-Relation │
+                   │  22 种关系类型   │
+                   │  5 种导出格式    │
+                   │  + Provenance    │
+                   └──────────────────┘
 ```
 
-## 使用示例
+分层分析流程：
+```
+rg 搜代码 → CRG 查 AST 调用链 → GitNexus 算影响半径
+             → Graphify 做语义聚类
+             → 知识图谱导出 → 报告/Eidos校验/Wiki
+```
 
+## MCP 服务
+
+`codeanalyze serve` 启动 FastMCP HTTP 服务，暴露的工具：
+
+| 工具 | 用途 |
+|------|------|
+| `status` | 已安装工具列表 |
+| `analyze_project` | 全链路分析 |
+| `export_graph` | 知识图谱导出 |
+| `audit_project` | 知识审计 |
+| `extract_policy_docs` | 公文元数据提取 |
+| `scan_directory` | 目录扫描 |
+| `rg_search` | ripgrep 代码搜索 |
+| `codegraph_search/callers/callees/context` | CRG 查询 |
+| `crg_status/crg_build` | CRG 管理 |
+
+与 Agora 集成：
 ```bash
-# 查看工具状态
-codeanalyze status
-
-# 完整分析当前项目（代码+文档）
-cd /Users/xiamingxing/Workspace/my-project
-codeanalyze analyze --docs .
-
-# 仅分析代码依赖关系
-codeanalyze deps .
-
-# 分析文档目录
-codeanalyze docs ./docs
+agora proxy add codeanalyze --command "codeanalyze serve --port 8765"
 ```
 
 ## 输出产物
 
 - `codeanalyze-report.md` — 综合分析报告
-- `codeanalyze-docs-report.md` — 文档分析报告（--docs 时）
-- `graphify-out/GRAPH_REPORT.md` — Graphify 生成（如有）
-- `graphify-out/graph.html` — 交互式图谱可视化
+- `codeanalyze-export.json` — JSON 知识图谱导出
+- `graphify-out/GRAPH_REPORT.md` — Graphify 语义图谱报告
+- `graphify-out/graph.html` — 交互式 D3.js 可视化
+- `*-audit-report.md` — 知识审计报告
 
-## 与 Serena MCP 配合
-
-Serena 不通过 CLI 调用，而是在分析过程中提示 Agent 直接使用其 MCP 工具：
+## 集成管线
 
 ```
-find_symbol          → 查找符号定义
-find_referencing_symbols → 谁引用了这个符号
-get_symbols_overview → 文件符号概览
-replace_symbol_body  → 安全替换符号内容
-rename_symbol        → 跨文件重命名
+codeanalyze (分析) → Eidos (Schema 校验)
+                     → KOS (知识索引)
+                     → OntoDerive (逻辑推理)
 ```
-
-## 文档项目专用命令：docscan
-
-## Wiki 生成：codeanalyze wiki
-
-生成项目管理 Wiki，支持两种模式：
-
-| 模式 | 条件 | 命令 |
-|------|------|------|
-| **DeepWiki-Open API** | 已部署 DeepWiki-Open + `DEEPWIKI_OPEN_URL` 环境变量 | `codeanalyze wiki --api .` |
-| **本地生成** | 默认模式，用 Graphify/GitNexus 输出生成 Markdown Wiki | `codeanalyze wiki .` |
-
-DeepWiki-Open 部署：
 
 ```bash
-git clone https://github.com/AsyncFuncAI/deepwiki-open
-cd deepwiki-open
-# 配置 .env (需要 GOOGLE_API_KEY 或 OPENAI_API_KEY)
-docker-compose up -d
-export DEEPWIKI_OPEN_URL=http://localhost:3000
-codeanalyze wiki --api .
+codeanalyze export --eidos /project
+eidos validate codeanalyze-eidos.json --type node
 ```
 
-适合扫描 `国转中心` 类型的文档密集型项目。自动识别：
+## 项目结构
 
-- **分类目录**：按 00-99 前缀自动归类
-- **文件类型**：PDF/DOCX/XLSX/MD/TXT 分类统计
-- **版本链**：同一文件的多版本演化（v1→v2→v3）
-- **Wiki 完整性**：检查 `_工作机制/wiki` 核心文件是否齐全
-- **混合项目检测**：自动判断是代码项目、文档项目、还是混合项目
+```
+src/codeanalyze/          # 代码+文档分析 CLI
+├── cli.py                # 薄 Click 组（29 行）
+├── mcp.py                # MCP 服务（15 工具）
+├── commands/             # 12 个子命令
+├── core/                 # registry / results(ER模型) / workspace
+├── analyzers/            # ripgrep / crg_graph / codereviewgraph
+│                         # gitnexus / graphify
+├── documents/            # official(公文) / scanner / docling
+│                         # deepwiki / pipeline
+├── reports/              # export / generate / audit / understand
+└── integrations/         # forge(Guardrails) / eidos_adapter
 
-```bash
-# 扫描文档项目
-codeanalyze docscan /Users/xiamingxing/Documents/国转中心
-
-# 带版本链和 Wiki 分析
-codeanalyze docscan --wiki --versions /Users/xiamingxing/Documents/国转中心
-
-# 保存报告
-codeanalyze docscan -o ~/Desktop/国转中心扫描报告.md /Users/xiamingxing/Documents/国转中心
+src/policydoc/            # 公文政策分析 CLI
+├── cli.py                # 薄 Click 组（32 行）
+└── commands/             # 9 个子命令
 ```
 
-### Eidos 集成
+## 数据模型
 
-Eidos 是 Workspace 的 schema 校验层。codeanalyze 通过 `--eidos` 标志输出 Eidos 兼容格式：
+```python
+@dataclass
+class Entity:
+    id: str                    # 全局唯一 ID
+    name: str                  # 实体名称
+    type: str                  # Policy/Function/Class/Org/Person
+    provenance: Provenance     # 来源溯源（file/method/confidence）
+    properties: dict           # 领域属性
 
-```bash
-codeanalyze export --eidos /Users/xiamingxing/Documents/国转中心/40-政策法规
-# 输出: codeanalyze-eidos.json（含 OntologyNode + Relation + Fact + KnowledgeCard）
-# 之后可用: eidos validate codeanalyze-eidos.json --type node
+@dataclass
+class Relation:
+    source_id: str             # 源实体
+    target_id: str             # 目标实体
+    type: str                  # REFERENCES/CALLS/DEPENDS_ON/...
+    confidence: float          # 0.0-1.0
 ```
 
-路线：codeanalyze(分析) → Eidos(校验) → KOS(索引) → OntoDerive(推理)
+## 开发规则
 
-### 项目文件清单
+1. 新增命令在 `src/codeanalyze/commands/` 或 `src/policydoc/commands/` 加文件
+2. 分析引擎适配器在 `analyzers/`，文档处理在 `documents/`
+3. 测试统一用 pytest：`pytest tests/ -q`
+4. 所有 `except` 必须 `logger.warning()`，不能 silent pass
+5. 用户路径必须 `_validate_path()` 校验
 
-当前共 23 个源文件（src/codeanalyze/）：
-```
-cli.py              ← 9 个子命令入口
-core/               ← registry, workspace, results(ER模型)
-analyzers/          ← graphify, gitnexus, serena 适配器
-documents/          ← scanner, official, docling, deepwiki, pipeline
-integrations/        ← eidos_adapter (可选)
-reports/            ← generate, export, validation
-```
+## 红队结论（必知）
+
+两轮红队攻击后，安全要点：
+1. 路径：`_validate_path()` 不可绕过
+2. Cypher 输出：转义 `\` 和 `'`
+3. XML 解析：用 `_safe_parse()`，不用 `ET.fromstring()`
+4. ZIP 解析：10MB 上限每文件
+5. 异常处理：必须日志，禁止 `except: pass`
+
+见 REDTEAM.md / REDTEAM_V2.md。

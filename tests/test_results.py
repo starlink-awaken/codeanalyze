@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from codeanalyze.core.results import Entity, Relation, KnowledgeGraph, Provenance
+from codeanalyze.core.results import Entity, KnowledgeGraph, Provenance, Relation
 
 
 class TestEntity:

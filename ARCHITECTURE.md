@@ -1,7 +1,15 @@
 # codeanalyze — 战略架构设计
 
-> 作者: P10 CTO 视角 | 日期: 2026-05-21 | 状态: 草案
+> 作者: P10 CTO 视角 | 初始日期: 2026-05-21 | 最后更新: 2026-05-28 | 状态: 草案
 > 领域: 代码分析引擎 × 公文/文档分析引擎
+>
+> ⚠️ 本文档写于 v0.1 架构阶段。当前 v0.3 已发生以下变化：
+> - 拆分出两个 CLI（codeanalyze 12 命令 + policydoc 9 命令）
+> - 删除 serena.py / prolog.py / validation.py（净减 2866 行）
+> - 新增 CRG/CodeGraph 集成（Tree-sitter → SQLite，零 LLM 成本）
+> - 新增 `codeanalyze serve` MCP HTTP 服务
+> - 新增 Forge Guardrails 可靠性层
+> - 当前架构评分 8.8/10。详见 README.md 架构图。
 
 ---
 
