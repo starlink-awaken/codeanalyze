@@ -122,7 +122,7 @@ def generate_summary(
         if indexed:
             lines.append(f"  ✅ 已索引 **{indexed:,}** 个符号")
         elif serena_result.get("index_exists"):
-            lines.append(f"  ✅ 索引就绪")
+            lines.append("  ✅ 索引就绪")
         else:
             lines.append("  ✅ 可用")
         lines.append(f"  🔧 {len(serena_tools)} 个 MCP 工具: {', '.join(serena_tools[:6])}")

@@ -7,6 +7,8 @@ import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from codeanalyze.core.workspace import CLAUDE_PLUGINS_DIR
+
 
 @dataclass
 class ToolInfo:
@@ -139,7 +141,7 @@ def _check_tool(spec: ToolSpec) -> ToolInfo:
 def _check_plugin_dir(spec: ToolSpec, info: ToolInfo) -> ToolInfo:
     """检查 Claude Code plugin 目录（如 Serena）。"""
     if spec.check_plugin_dir and not info.available:
-        plugin_dir = Path.home() / ".claude" / "plugins" / spec.name
+        plugin_dir = CLAUDE_PLUGINS_DIR / spec.name
         if plugin_dir.joinpath("package.json").exists():
             return ToolInfo(
                 name=spec.name, description=spec.desc,

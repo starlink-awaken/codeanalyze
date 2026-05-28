@@ -22,8 +22,8 @@ def get_available_tools() -> list[str]:
     ]
 
 
-def get_symbol_stats(_project_path: str) -> dict:
-    """检测 Serena 是否可用并返回状态。"""
+def check_available() -> dict:
+    """检测 Serena 是否可用并返回状态（不需要 project_path）。"""
     if not shutil.which("serena"):
         return {"available": False, "indexed": 0, "tools": [], "error": "serena CLI not found"}
     return {

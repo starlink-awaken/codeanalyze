@@ -4,16 +4,15 @@ from pathlib import Path
 import click
 from rich.panel import Panel
 
-from codeanalyze.analyzers import gitnexus, graphify
 from codeanalyze.analyzers import codereviewgraph as crg
-from codeanalyze.analyzers import serena
+from codeanalyze.analyzers import gitnexus, graphify, serena
 from codeanalyze.commands.common import _validate_path, console
 from codeanalyze.core.registry import build_registry
-from codeanalyze.core.workspace import detect_workspace
+from codeanalyze.core.workspace import CLAUDE_PLUGINS_DIR, detect_workspace
 from codeanalyze.documents import pipeline as doc_pipeline
 from codeanalyze.reports.generate import generate_summary, write_report
-from codeanalyze.reports.insights import analyze as analyze_insights
 from codeanalyze.reports.insights import _SEVERITY_ICONS as SEVERITY_ICONS
+from codeanalyze.reports.insights import analyze as analyze_insights
 
 
 @click.command()
@@ -82,7 +81,7 @@ def analyze(path: str, docs: bool, output: str | None):
     s_tool = reg.tools.get("serena")
     s_result = {"available": False, "tools": [], "indexed": 0}
     if s_tool and s_tool.available:
-        s_stats = serena.get_symbol_stats(str(root))
+        s_stats = serena.check_available()
         if s_stats.get("available"):
             s_result = {"available": True, "indexed": True, "tools": serena.get_available_tools()}
             console.print(f"  [green]✅ 可用 ({len(s_result['tools'])} 个 MCP 工具)[/]")
@@ -91,11 +90,11 @@ def analyze(path: str, docs: bool, output: str | None):
             console.print("  ⏭️ 未安装 (pip install serena-agent)")
     else:
         serena_plugins = [
-            p for p in Path.home().joinpath(".claude/plugins").iterdir()
+            p for p in CLAUDE_PLUGINS_DIR.iterdir()
             if p.is_dir() and "serena" in p.name
-        ] if Path.home().joinpath(".claude/plugins").exists() else []
+        ] if CLAUDE_PLUGINS_DIR.exists() else []
         if serena_plugins:
-            console.print(f"  [green]✅ Serena 插件已安装[/]")
+            console.print("  [green]✅ Serena 插件已安装[/]")
             s_result = {"available": True, "tools": serena.get_available_tools()}
         else:
             console.print("  ⏭️ 未安装 (pip install serena-agent)")

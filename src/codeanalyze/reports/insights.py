@@ -4,6 +4,8 @@ import os
 import re
 from pathlib import Path
 
+from codeanalyze.core.workspace import EXCLUDE_DIRS, relative_path
+
 # 严重级别图标映射
 _SEVERITY_ICONS = {"insight": "💡", "warning": "⚠️", "critical": "🔴"}
 
@@ -14,13 +16,6 @@ _LAYER_RULES = [
     ("nucleus/Z-Core", "nucleus/Z-Spore", "核心依赖基因组"),
 ]
 
-# 排除路径模式
-_EXCLUDE_DIRS = {".venv", "node_modules", "__pycache__", ".git", ".worktrees",
-                 ".omc", ".benchmarks", ".hypothesis", ".pytest_cache",
-                 ".ruff_cache", ".mypy_cache", ".graphify", ".gitnexus",
-                 ".serena", ".runtime", ".sessions", ".agent", "tmp",
-                 "logs", "graphify-out", "forge-mcp"}
-
 # 分析阈值
 _LARGE_FILE_BYTES = 100_000
 _MAX_LARGE_FILES = 5
@@ -30,11 +25,12 @@ _MAX_VIOLATIONS = 10
 _MAX_INSIGHT_DETAIL = 3
 
 
-def _collect_python_files(root: Path) -> list[Path]:
+def _collect_python_files(root: Path, exclude: set[str] = None) -> list[Path]:
     """单次遍历收集所有 Python 文件，主动修剪排除目录。"""
+    exclude = exclude or EXCLUDE_DIRS
     files = []
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in _EXCLUDE_DIRS]
+        dirnames[:] = [d for d in dirnames if d not in exclude]
         for fname in filenames:
             if fname.endswith(".py"):
                 files.append(Path(dirpath) / fname)
@@ -80,7 +76,7 @@ def _file_size_insights(py_files: list[Path], root: Path) -> list[dict]:
     if large_files:
         paths = []
         for f, s in sorted(large_files, key=lambda x: -x[1])[:_MAX_LARGE_FILES]:
-            paths.append(f"{_relative(f, root)} ({s // 1024}KB)")
+            paths.append(f"{relative_path(f, root)} ({s // 1024}KB)")
         results.append({
             "severity": "warning", "category": "代码规模",
             "title": f"超大文件 ({len(large_files)} 个 >{_LARGE_FILE_BYTES // 1024}KB)",
@@ -88,7 +84,7 @@ def _file_size_insights(py_files: list[Path], root: Path) -> list[dict]:
         })
 
     if empty_files:
-        paths = "\n".join(_relative(f, root) for f in empty_files[:_MAX_EMPTY_FILES])
+        paths = "\n".join(relative_path(f, root) for f in empty_files[:_MAX_EMPTY_FILES])
         results.append({
             "severity": "insight", "category": "代码异常",
             "title": f"空文件 ({len(empty_files)} 个)",
@@ -138,7 +134,7 @@ def _layer_check(py_files: list[Path], root: Path) -> list[dict]:
             text = f.read_text("utf-8", errors="ignore")
         except OSError:
             continue
-        rel = _relative(f, root)
+        rel = relative_path(f, root)
         if not rel:
             continue
 
@@ -170,10 +166,10 @@ def _import_safety(py_files: list[Path], root: Path) -> list[dict]:
         except OSError:
             continue
         if re.search(r"sys\.path\.(insert|append)", text):
-            unsafe.append(f"sys.path 修改: {_relative(f, root)}")
+            unsafe.append(f"sys.path 修改: {relative_path(f, root)}")
         bare = re.findall(r"^except\s*:", text, re.MULTILINE)
         if bare:
-            unsafe.append(f"裸 except: {_relative(f, root)} ({len(bare)} 处)")
+            unsafe.append(f"裸 except: {relative_path(f, root)} ({len(bare)} 处)")
         if len(unsafe) >= _MAX_VIOLATIONS:
             break
 
@@ -226,7 +222,7 @@ def _dep_health(gitnexus_result: dict) -> list[dict]:
     return results
 
 
-def _relative(path: Path, parent: Path) -> str:
+def relative_path(path: Path, parent: Path) -> str:
     try:
         return str(path.relative_to(parent))
     except ValueError:

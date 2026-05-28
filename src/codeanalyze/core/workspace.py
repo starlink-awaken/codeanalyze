@@ -3,6 +3,24 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+# 共享排除目录（用于文件遍历时过滤系统/生成目录）
+EXCLUDE_DIRS = {".venv", "node_modules", "__pycache__", ".git", ".worktrees",
+                ".omc", ".benchmarks", ".hypothesis", ".pytest_cache",
+                ".ruff_cache", ".mypy_cache", ".graphify", ".gitnexus",
+                ".serena", ".runtime", ".sessions", ".agent", "tmp",
+                "logs", "graphify-out", "forge-mcp"}
+
+# Claude 插件目录
+CLAUDE_PLUGINS_DIR = Path.home() / ".claude" / "plugins"
+
+
+def relative_path(path: Path, parent: Path) -> str:
+    """获取相对路径，失败时返回文件名。"""
+    try:
+        return str(path.relative_to(parent))
+    except ValueError:
+        return path.name
+
 
 @dataclass
 class WorkspaceInfo:
