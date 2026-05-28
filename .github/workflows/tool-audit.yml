@@ -1,0 +1,46 @@
+name: 外部工具版本巡检
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # 每周一 09:00 UTC
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  tool-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install codeanalyze
+        run: pip install -e .
+      - name: 检测工具版本
+        id: tools
+        run: |
+          echo "## 工具版本快照" > tool-report.md
+          echo "" >> tool-report.md
+          echo "| 工具 | 状态 | 版本 |" >> tool-report.md
+          echo "|---|---|---|" >> tool-report.md
+          codeanalyze status --format json 2>/dev/null | \
+            python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+tools = data.get('tools', {})
+for name, info in sorted(tools.items()):
+    icon = '✅' if info.get('available') else '❌'
+    ver = info.get('version', '-') or '-'
+    print(f'| {name} | {icon} | {ver} |')
+" >> tool-report.md || echo "status fallback" >> tool-report.md
+      - name: 对比上次版本
+        run: |
+          if [ -f tool-report.prev.md ]; then
+            diff tool-report.md tool-report.prev.md && echo "✅ 无版本变化" || echo "⚠️ 版本有变化"
+          else
+            echo "首次巡检，无对比基线"
+          fi
+          cp tool-report.md tool-report.prev.md
+      - name: 上传巡检报告
+        uses: actions/upload-artifact@v4
+        with:
+          name: tool-audit-report
+          path: tool-report.md
