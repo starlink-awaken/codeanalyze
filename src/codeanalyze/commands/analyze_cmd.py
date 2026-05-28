@@ -12,6 +12,7 @@ from codeanalyze.core.registry import build_registry
 from codeanalyze.core.workspace import detect_workspace
 from codeanalyze.documents import pipeline as doc_pipeline
 from codeanalyze.reports.generate import generate_summary, write_report
+from codeanalyze.reports.insights import analyze as analyze_insights
 
 
 @click.command()
@@ -109,9 +110,21 @@ def analyze(path: str, docs: bool, output: str | None):
     else:
         console.print("\n[dim]📝 文档分析跳过 (使用 --docs 开启)[/]")
 
+    # — 洞察分析 —
+    console.print("\n[bold cyan]▶ 运行洞察分析...[/]")
+    try:
+        project_insights = analyze_insights(str(root), crg_result, gnresult)
+        console.print(f"  [green]✅ 生成 {len(project_insights)} 项洞察[/]")
+        for ins in project_insights[:3]:
+            icon = {"insight": "💡", "warning": "⚠️", "critical": "🔴"}.get(ins["severity"], "💡")
+            console.print(f"  {icon} {ins['title']}")
+    except Exception as e:
+        console.print(f"  [yellow]⚠️ 洞察分析异常: {e}[/]")
+        project_insights = []
+
     # — 生成报告 —
     console.print("\n[bold cyan]▶ 生成综合分析报告...[/]")
-    report_content = generate_summary(str(root), gresult, gnresult, s_result, doc_result, crg_result)
+    report_content = generate_summary(str(root), gresult, gnresult, s_result, doc_result, crg_result, project_insights)
     report_path = write_report(str(root), report_content, output)
     console.print(f"  [green]✅ 报告已写入: {report_path}[/]")
 
@@ -233,6 +246,6 @@ def report(path: str, output: str | None, docs: bool):
     if docs:
         doc_result = doc_pipeline.analyze_path(path, reg)
 
-    content = generate_summary(str(root), g_result, gn_result, {}, doc_result, crg_result)
+    content = generate_summary(str(root), g_result, gn_result, {}, doc_result, crg_result, [])
     target = write_report(str(root), content, output)
     console.print(f"[green]✅ 报告已写入: {target}[/]")

@@ -10,6 +10,7 @@ def generate_summary(
     serena_result: dict,
     doc_result: dict = None,
     crg_result: dict = None,
+    insights: list[dict] = None,
 ) -> str:
     """生成跨工具综合分析报告。
 
@@ -20,6 +21,7 @@ def generate_summary(
         serena_result: Serena 工具列表（tools）
         doc_result: 文档分析结果（total_docs/total_words/files）
         crg_result: CRG 结果（total_files/total_nodes/total_edges）
+        insights: 洞察分析结果列表
     """
     root = Path(repo_path).resolve()
     lines = [
@@ -161,10 +163,28 @@ def generate_summary(
     else:
         lines.append("  ✅ 所有推荐工具已就绪")
 
+    # ── 洞察分析 ──
+    if insights:
+        lines.append("")
+        lines.append("## 🔬 洞察分析")
+        lines.extend(_format_insights(insights))
+
     lines.append("")
     lines.append("---")
     lines.append("> 由 codeanalyze v0.3.0 生成")
     return "\n".join(lines)
+
+
+def _format_insights(insights: list[dict]) -> list[str]:
+    """格式化洞察为 Markdown 行。"""
+    lines = []
+    for ins in insights:
+        icon = {"insight": "💡", "warning": "⚠️", "critical": "🔴"}.get(ins["severity"], "💡")
+        lines.append(f"  {icon} **[{ins['category']}]** {ins['title']}")
+        if ins.get("detail"):
+            for d in ins["detail"].split("\n")[:3]:
+                lines.append(f"    {d}")
+    return lines
 
 
 def write_report(repo_path: str, content: str, output: str | None = None) -> str:
