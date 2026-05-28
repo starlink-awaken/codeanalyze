@@ -26,6 +26,16 @@ _SUPERSEDES_PATTERN = re.compile(r"(?:supersedes|版本|v)(\d+)", re.IGNORECASE)
 _VERSION_PATTERN = re.compile(r"v?(\d+(?:\.\d+)*)", re.IGNORECASE)
 
 
+def _version_sort_key(doc) -> tuple:
+    """Sort versions: int-like first, semver fallback."""
+    v = doc.version or "0"
+    parts = v.split(".")
+    try:
+        return (0, int(parts[0]), *(int(p) for p in parts[1:]))
+    except ValueError:
+        return (1, 0, 0)
+
+
 @dataclass
 class DocFile:
     path: Path
@@ -163,7 +173,7 @@ def scan_directory(root_path: str) -> DirectoryMap:
     # Add version chains (groups with 2+ versions)
     for base, files in version_map.items():
         if len(files) >= 2:
-            files.sort(key=lambda x: float(x.version or "0"))
+            files.sort(key=_version_sort_key)
             dm.version_chains.append(files)
 
     dm.categories = by_cat
