@@ -545,6 +545,12 @@ def main():
     mcp.run()
 
 
+@mcp.resource("health://status")
+def health_check() -> str:
+    """健康检查端点 — 返回服务状态。"""
+    return "ok"
+
+
 def http_main():
     """Run the MCP server in HTTP mode."""
     import asyncio

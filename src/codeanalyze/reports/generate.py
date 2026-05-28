@@ -1,8 +1,10 @@
 """报告生成与合并 — 跨工具分析结果汇总，含 CRG、GitNexus、Graphify 数据。"""
 
+import os
 import re
 from pathlib import Path
 
+from codeanalyze.core.workspace import EXCLUDE_DIRS
 from codeanalyze.reports.insights import format_insights
 
 
@@ -35,7 +37,7 @@ def generate_summary(
 
     # ── 项目概览 ──
     lines.append("## 📦 项目概览")
-    py_files = [p for p in root.rglob("*.py") if p.is_file()]
+    py_files = _collect_py_files(root)
     lines.append(f"- Python 文件: {len(py_files):,}")
     total_lines = 0
     for p in py_files[:5000]:
@@ -44,7 +46,7 @@ def generate_summary(
         except (OSError, PermissionError):
             pass
     lines.append(f"- 源码行数: ~{total_lines:,}")
-    all_files = sum(1 for _ in root.rglob("*") if _.is_file())
+    all_files = _count_all_files(root)
     lines.append(f"- 目录总文件: {all_files:,}")
     lines.append("")
 
@@ -182,3 +184,23 @@ def write_report(repo_path: str, content: str, output: str | None = None) -> str
     target = output or str(Path(repo_path).resolve() / "codeanalyze-report.md")
     Path(target).write_text(content, encoding="utf-8")
     return target
+
+
+def _collect_py_files(root: Path) -> list[Path]:
+    """单次 os.walk 收集 .py 文件，修剪排除目录。"""
+    files = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
+        for fn in filenames:
+            if fn.endswith(".py"):
+                files.append(Path(dirpath) / fn)
+    return files
+
+
+def _count_all_files(root: Path) -> int:
+    """统计所有文件数（修剪排除目录）。"""
+    total = 0
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
+        total += len(filenames)
+    return total
