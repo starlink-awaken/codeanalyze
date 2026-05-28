@@ -13,6 +13,7 @@ from codeanalyze.core.workspace import detect_workspace
 from codeanalyze.documents import pipeline as doc_pipeline
 from codeanalyze.reports.generate import generate_summary, write_report
 from codeanalyze.reports.insights import analyze as analyze_insights
+from codeanalyze.reports.insights import _SEVERITY_ICONS as SEVERITY_ICONS
 
 
 @click.command()
@@ -113,10 +114,10 @@ def analyze(path: str, docs: bool, output: str | None):
     # — 洞察分析 —
     console.print("\n[bold cyan]▶ 运行洞察分析...[/]")
     try:
-        project_insights = analyze_insights(str(root), crg_result, gnresult)
+        project_insights = analyze_insights(str(root), gnresult)
         console.print(f"  [green]✅ 生成 {len(project_insights)} 项洞察[/]")
         for ins in project_insights[:3]:
-            icon = {"insight": "💡", "warning": "⚠️", "critical": "🔴"}.get(ins["severity"], "💡")
+            icon = SEVERITY_ICONS.get(ins["severity"], "💡")
             console.print(f"  {icon} {ins['title']}")
     except Exception as e:
         console.print(f"  [yellow]⚠️ 洞察分析异常: {e}[/]")

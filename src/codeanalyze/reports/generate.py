@@ -1,6 +1,9 @@
 """报告生成与合并 — 跨工具分析结果汇总，含 CRG、GitNexus、Graphify 数据。"""
 
+import re
 from pathlib import Path
+
+from codeanalyze.reports.insights import format_insights
 
 
 def generate_summary(
@@ -68,9 +71,9 @@ def generate_summary(
         report_path = root / "graphify-out" / "GRAPH_REPORT.md"
         html_path = root / "graphify-out" / "graph.html"
         if report_path.exists():
-            lines.append(f"    📄 报告: graphify-out/GRAPH_REPORT.md")
+            lines.append("    📄 报告: graphify-out/GRAPH_REPORT.md")
         if html_path.exists():
-            lines.append(f"    🌐 可视化: graphify-out/graph.html")
+            lines.append("    🌐 可视化: graphify-out/graph.html")
     lines.append("")
 
     # ── CRG Tree-sitter 知识图谱 ──
@@ -93,7 +96,6 @@ def generate_summary(
         lines.append("  ✅ 索引完成")
         stdout = gitnexus_result.get("stdout", "")
         # Parse key metrics from gitnexus output
-        import re
         node_match = re.search(r"([\d,]+)\s*nodes?", stdout)
         edge_match = re.search(r"([\d,]+)\s*edges?", stdout)
         cluster_match = re.search(r"([\d,]+)\s*clusters?", stdout)
@@ -167,24 +169,12 @@ def generate_summary(
     if insights:
         lines.append("")
         lines.append("## 🔬 洞察分析")
-        lines.extend(_format_insights(insights))
+        lines.append(format_insights(insights))
 
     lines.append("")
     lines.append("---")
     lines.append("> 由 codeanalyze v0.3.0 生成")
     return "\n".join(lines)
-
-
-def _format_insights(insights: list[dict]) -> list[str]:
-    """格式化洞察为 Markdown 行。"""
-    lines = []
-    for ins in insights:
-        icon = {"insight": "💡", "warning": "⚠️", "critical": "🔴"}.get(ins["severity"], "💡")
-        lines.append(f"  {icon} **[{ins['category']}]** {ins['title']}")
-        if ins.get("detail"):
-            for d in ins["detail"].split("\n")[:3]:
-                lines.append(f"    {d}")
-    return lines
 
 
 def write_report(repo_path: str, content: str, output: str | None = None) -> str:
