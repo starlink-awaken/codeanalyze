@@ -133,9 +133,8 @@ agora proxy add codeanalyze --command "codeanalyze serve --port 8765"
 ## 集成管线
 
 ```
-codeanalyze (分析) → Eidos (Schema 校验)
-                     → KOS (知识索引)
-                     → OntoDerive (逻辑推理)
+codeanalyze (分析) → Eidos (Schema 校验，单向导出)
+                     KOS/OntoDerive (需手动执行)
 ```
 
 ```bash

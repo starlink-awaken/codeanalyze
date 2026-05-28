@@ -50,9 +50,4 @@ def export(path, output_format, output, eidos, pipeline):
         console.print(f"  📄 Eidos: {etarget}")
 
     if pipeline:
-        try:
-            import kos
-            console.print(f"  ✅ KOS: {kos.stats()}")
-        except ImportError:
-            console.print("  ⏭️  KOS not installed")
-        console.print("[green]✅ Pipeline ready: codeanalyze → Eidos → KOS[/]")
+        console.print("[green]✅ 导出完成: codeanalyze → Eidos (单向导出，KOS/OntoDerive 需手动执行)[/]")

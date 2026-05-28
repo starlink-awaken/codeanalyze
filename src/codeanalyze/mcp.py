@@ -54,6 +54,64 @@ def _ok(data: dict) -> dict:
     return {"status": "ok", **data}
 
 
+def _run_eidos_export(kg, root: Path) -> dict:
+    """运行 Eidos 格式转换 + Schema 校验。"""
+    import json as _json
+
+    from codeanalyze.integrations.eidos_adapter import (
+        convert_kg,
+        try_eidos_validate,
+    )
+
+    eidos_data = convert_kg(kg)
+    eidos_target = root / "codeanalyze-eidos.json"
+    eidos_target.write_text(
+        _json.dumps(eidos_data, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    validation = try_eidos_validate(eidos_data)
+    return {
+        "output_path": str(eidos_target),
+        "ontology_nodes": len(eidos_data["ontology_nodes"]),
+        "relations": len(eidos_data["relations"]),
+        "facts": len(eidos_data["facts"]),
+        "cards": len(eidos_data["cards"]),
+        "validation": validation,
+    }
+
+
+def _md_summary(kg) -> str:
+    """生成 Markdown 摘要。"""
+    lines = [
+        "# 知识图谱导出报告",
+        "## 概览",
+        f"- 实体: {kg.entity_count} 个",
+        f"- 关系: {kg.relation_count} 条",
+        f"- 来源文件: {len(kg.source_files)} 个",
+        "",
+        "## 实体列表",
+    ]
+    for e in kg.entities.values():
+        prov = f" [来源: {e.provenance.source_file.split('/')[-1] if e.provenance else '-'}]"
+        lines.append(f"- [{e.type}] **{e.name}** (域: {e.domain}, 置信: {e.confidence}){prov}")
+    lines.extend(["", "## 关系列表"])
+    for i, r in enumerate(kg.relations):
+        if i >= 60:
+            lines.append(f"  ... 还有 {len(kg.relations) - 60} 条")
+            break
+        src = kg.entities.get(r.source_id)
+        tgt = kg.entities.get(r.target_id)
+        sn = src.name if src else r.source_id[:30]
+        tn = tgt.name if tgt else r.target_id[:30]
+        lines.append(f"- {sn} --[{r.type}]--> {tn}")
+    lines.extend(["", "## 来源文件"])
+    for sf_path, info in kg.source_files.items():
+        name = sf_path.split("/")[-1]
+        lines.append(f"- {name} (分析器: {info['analyzer']})")
+    return "\n".join(lines)
+
+
 # ── Tools ──
 
 
@@ -92,23 +150,57 @@ def analyze_project(path: str = ".") -> dict:
 
 @guardrail(required_steps=["analyze", "validate"], max_retries=2)
 @mcp.tool()
-async def export_graph(path: str = ".", output_format: str = "json", code: bool = False) -> dict:
+async def export_graph(path: str = ".", output_format: str = "json", code: bool = False, eidos: bool = False) -> dict:
     """Export project knowledge graph in structured format.
 
     Args:
         path: Project root path
         output_format: json | json-ld | cypher | md
         code: Include code analysis entities (requires graphify)
+        eidos: Convert to Eidos-compatible format + schema validation
     """
     try:
-        from codeanalyze.reports.export import export_graph as _export
+        import json as _json
 
-        target = _export(path, output_format, include_code=code)
-        return _ok({
-            "output_path": target,
+        from codeanalyze.documents.official import analyze_policy_directory
+        from codeanalyze.reports.export import merge_code_kg, policy_graph_to_kg
+
+        root = Path(path).resolve()
+        pg = analyze_policy_directory(str(root))
+        kg = policy_graph_to_kg(pg)
+
+        if code:
+            kg = merge_code_kg(kg, str(root))
+
+        # 序列化
+        suffix_map = {"json": ".json", "json-ld": ".jsonld", "cypher": ".cypher", "md": ".md"}
+        serializers = {
+            "json": lambda: kg.to_json(),
+            "json-ld": lambda: _json.dumps(kg.to_json_ld(), ensure_ascii=False, indent=2),
+            "cypher": lambda: kg.to_cypher(),
+            "md": lambda: _md_summary(kg),
+        }
+
+        content = serializers[output_format]()
+        suffix = suffix_map[output_format]
+        target = root / f"codeanalyze-export{suffix}"
+        target.write_text(content, encoding="utf-8")
+
+        result = {
+            "output_path": str(target),
             "format_version": FORMAT_VERSION,
             "format": output_format,
-        })
+            "entity_count": kg.entity_count,
+            "relation_count": kg.relation_count,
+            "source_files": len(kg.source_files),
+        }
+
+        # Eidos 集成（可选）
+        if eidos:
+            eidos_result = _run_eidos_export(kg, root)
+            result["eidos"] = eidos_result
+
+        return _ok(result)
     except Exception as e:
         return _error(str(e))
 

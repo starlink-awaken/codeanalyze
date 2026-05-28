@@ -1,10 +1,10 @@
 """Eidos 集成适配器 — 将 codeanalyze 知识图谱转换为 Eidos 兼容格式
 
 Eidos 是 Workspace 的 schema 定义与校验层。
-集成线路: codeanalyze export → Eidos validate → KOS ingest
+集成线路: codeanalyze export → Eidos validate (单向导出，KOS/OntoDerive 需手动执行)
 
 架构位置:
-  codeanalyze (分析抽取) → Eidos (schema校验) → KOS (存储索引) → OntoDerive (推理)
+  codeanalyze (分析抽取) → Eidos (schema校验) → KOS/OntoDerive (手动执行)
 """
 
 from datetime import datetime
@@ -207,6 +207,22 @@ def try_eidos_validate(data: dict) -> dict:
         return results
 
     except ImportError:
-        return {"available": False, "note": "Eidos not installed. pip install -e /path/to/eidos"}
+        return {"available": False, "note": _eidos_install_hint()}
     except Exception as e:
         return {"available": False, "error": str(e)}
+
+
+def _eidos_install_hint() -> str:
+    """动态检测 Eidos 安装路径，避免硬编码。"""
+    # 检查常见 Workspace 路径
+    import os
+    from pathlib import Path
+
+    candidates = [
+        Path.home() / "Workspace" / "eidos",
+        Path.cwd() / ".." / "eidos",
+    ]
+    for candidate in candidates:
+        if (candidate / "pyproject.toml").exists():
+            return f"Eidos not installed. pip install -e {candidate}"
+    return "Eidos not installed. pip install eidos (或从本地 eidos 目录 pip install -e .)"

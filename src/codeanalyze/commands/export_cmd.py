@@ -7,6 +7,7 @@ from rich.panel import Panel
 
 from codeanalyze.commands.common import _validate_path, console
 from codeanalyze.documents.official import analyze_policy_directory
+from codeanalyze.integrations.forge import guardrail
 from codeanalyze.reports.export import merge_code_kg, policy_graph_to_kg
 
 
@@ -52,6 +53,7 @@ def _md_summary(kg) -> str:
 @click.option("--mode", default="summary",
               type=click.Choice(["summary", "condensed", "full"]),
               help="summary=摘要(类型分布), condensed=精简(-SourceFile), full=全量")
+@guardrail(required_steps=["analyze", "export"], max_retries=2)
 def export(path: str, output_format: str, output: str | None, code: bool, eidos: bool, pretty: bool, mode: str):
     """导出结构化知识图谱（JSON/JSON-LD/Cypher/Markdown）。
 
@@ -177,7 +179,7 @@ def export(path: str, output_format: str, output: str | None, code: bool, eidos:
 
         console.print(Panel.fit(
             "[bold green]✅ Eidos 集成完成[/]\n"
-            "  集成路径: codeanalyze → Eidos → KOS → OntoDerive\n"
+            "  集成路径: codeanalyze → Eidos (单向导出，KOS/OntoDerive 需手动执行)\n"
             "  执行: eidos validate codeanalyze-eidos.json --type node",
             border_style="green",
         ))
